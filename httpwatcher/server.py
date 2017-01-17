@@ -37,10 +37,10 @@ class HttpWatcherServer(tornado.web.Application):
         self.server_base_path = ("/%s/" % server_base_path.strip("/")) if server_base_path != "/" else "/"
         self.watcher_interval = watcher_interval
         self.recursive = recursive
-        self.livereload_js_path = pkg_resources.resource_filename(
+        self.livereload_js_path = os.path.abspath(os.path.realpath(pkg_resources.resource_filename(
             "httpwatcher",
             os.path.join("scripts", "livereload.js")
-        )
+        )))
         logger.debug("livereload.js path: %s" % self.livereload_js_path)
 
         handlers = [
