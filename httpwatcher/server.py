@@ -166,6 +166,9 @@ class LiveReloadStaticFileHandler(tornado.web.RequestHandler):
             assert self.request.method == "HEAD"
 
     def validate_path(self, url_path, abspath):
+        if ".." in url_path or "~" in url_path:
+            raise tornado.web.HTTPError(403, "Invalid request URI")
+
         # if it's an existing directory
         if os.path.exists(abspath) and os.path.isdir(abspath):
             if not url_path.endswith("/"):
