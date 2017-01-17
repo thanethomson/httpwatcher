@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 
 import os
 import os.path
+import shutil
 
 from tornado import gen
 from tornado.queues import Queue
@@ -70,8 +71,10 @@ class TestFileSystemWatcher(AsyncTestCase):
         IOLoop.current().call_later(CHECK_DELAY, get_queue_size, self.stop)
         self.assertEqual(0, self.wait())
 
-        os.unlink(os.path.join(self.temp_path, "file1"))
-        os.unlink(os.path.join(self.temp_path, "file2"))
+        os.remove(os.path.join(self.temp_path, "file1"))
+        os.remove(os.path.join(self.temp_path, "file2"))
 
         IOLoop.current().call_later(CHECK_DELAY, get_queue_size, self.stop)
         self.assertGreater(self.wait(), 0)
+
+        watcher.shutdown()
