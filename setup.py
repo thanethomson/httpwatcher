@@ -27,7 +27,7 @@ setup(
     name="httpwatcher",
     version=get_version(),
     description="Web server library and command-line utility for serving static files with live reload functionality",
-    long_description='\n'.join(read_file('README.rst')),
+    long_description=''.join(read_file('README.rst')),
     keywords='livereload hotreload web server live reload hot reload',
     author="Thane Thomson",
     author_email="connect@thanethomson.com",
