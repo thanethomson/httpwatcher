@@ -102,7 +102,7 @@ class TestHttpWatcherServer(AsyncTestCase):
         write_file(self.temp_path, "README.txt", "Hello world!")
 
         IOLoop.current().call_later(
-            0.5,
+            1.0,
             lambda: websocket_client.read_message(lambda future: self.stop(future.result()))
         )
         msg = json.loads(self.wait())

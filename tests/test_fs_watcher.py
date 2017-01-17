@@ -17,6 +17,9 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+CHECK_DELAY = 0.5
+
+
 class TestFileSystemWatcher(AsyncTestCase):
 
     temp_path = None
@@ -55,20 +58,20 @@ class TestFileSystemWatcher(AsyncTestCase):
         write_file(self.temp_path, "file1", "Test file 1 contents")
         write_file(self.temp_path, "file2", "Test file 2 contents")
 
-        IOLoop.current().call_later(0.1, get_queue_size, self.stop)
+        IOLoop.current().call_later(CHECK_DELAY, get_queue_size, self.stop)
         self.assertGreater(self.wait(), 0)
 
         os.makedirs(os.path.join(self.temp_path, "subfolder1"))
 
-        IOLoop.current().call_later(0.1, get_queue_size, self.stop)
+        IOLoop.current().call_later(CHECK_DELAY, get_queue_size, self.stop)
         self.assertGreater(self.wait(), 0)
 
         # do nothing for a bit - no filesystem events
-        IOLoop.current().call_later(0.1, get_queue_size, self.stop)
+        IOLoop.current().call_later(CHECK_DELAY, get_queue_size, self.stop)
         self.assertEqual(0, self.wait())
 
         os.unlink(os.path.join(self.temp_path, "file1"))
         os.unlink(os.path.join(self.temp_path, "file2"))
 
-        IOLoop.current().call_later(0.1, get_queue_size, self.stop)
+        IOLoop.current().call_later(CHECK_DELAY, get_queue_size, self.stop)
         self.assertGreater(self.wait(), 0)
