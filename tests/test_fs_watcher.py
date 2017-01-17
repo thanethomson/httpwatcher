@@ -15,7 +15,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-CHECK_DELAY = 0.1
+CHECK_DELAY = 5.0
 
 
 class TestFileSystemWatcher(AsyncTestCase):
