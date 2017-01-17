@@ -55,7 +55,7 @@ class FileSystemWatcher(object):
             drained_events.append(self.fs_event_queue.get_nowait())
         if len(drained_events) > 0 and callable(self.on_changed):
             logger.debug("Detected %d file system change(s) - triggering callback" % len(drained_events))
-            IOLoop.current().spawn_callback(self.on_changed, drained_events)
+            self.on_changed(drained_events)
 
     def start(self):
         if not self.started:

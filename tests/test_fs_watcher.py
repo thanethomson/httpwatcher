@@ -4,10 +4,7 @@ from __future__ import unicode_literals
 
 import os
 import os.path
-import shutil
 
-from tornado import gen
-from tornado.queues import Queue
 from tornado.ioloop import IOLoop
 from tornado.testing import AsyncTestCase
 
@@ -18,7 +15,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-CHECK_DELAY = 0.5
+CHECK_DELAY = 0.1
 
 
 class TestFileSystemWatcher(AsyncTestCase):
@@ -35,46 +32,44 @@ class TestFileSystemWatcher(AsyncTestCase):
 
         self.temp_path = init_temp_path()
         write_file(self.temp_path, "README", "This will be the first and only file in the temporary folder (for now)")
+        self.event_counter = 0
+
+    def track_change_events(self, events):
+        self.event_counter += len(events)
+
+    def report_event_counter(self):
+        c = self.event_counter
+        self.event_counter = 0
+        self.stop(c)
 
     def test_basic_watcher(self):
-
-        tracked_events = Queue()
-
-        @gen.coroutine
-        def track_change_events(events):
-            for e in events:
-                tracked_events.put(e)
-
-        @gen.coroutine
-        def get_queue_size(callback):
-            counter = 0
-            while tracked_events.qsize() > 0:
-                tracked_events.get_nowait()
-                counter += 1
-            callback(counter)
-
-        watcher = FileSystemWatcher(self.temp_path, on_changed=track_change_events, interval=0.1, recursive=True)
+        watcher = FileSystemWatcher(
+            self.temp_path,
+            on_changed=lambda events: self.track_change_events(events),
+            interval=0.01,
+            recursive=True
+        )
         watcher.start()
 
         write_file(self.temp_path, "file1", "Test file 1 contents")
         write_file(self.temp_path, "file2", "Test file 2 contents")
 
-        IOLoop.current().call_later(CHECK_DELAY, get_queue_size, self.stop)
+        IOLoop.current().call_later(CHECK_DELAY, lambda: self.report_event_counter())
         self.assertGreater(self.wait(), 0)
 
         os.makedirs(os.path.join(self.temp_path, "subfolder1"))
 
-        IOLoop.current().call_later(CHECK_DELAY, get_queue_size, self.stop)
+        IOLoop.current().call_later(CHECK_DELAY, lambda: self.report_event_counter())
         self.assertGreater(self.wait(), 0)
 
         # do nothing for a bit - no filesystem events
-        IOLoop.current().call_later(CHECK_DELAY, get_queue_size, self.stop)
+        IOLoop.current().call_later(CHECK_DELAY, lambda: self.report_event_counter())
         self.assertEqual(0, self.wait())
 
         os.remove(os.path.join(self.temp_path, "file1"))
         os.remove(os.path.join(self.temp_path, "file2"))
 
-        IOLoop.current().call_later(CHECK_DELAY, get_queue_size, self.stop)
+        IOLoop.current().call_later(CHECK_DELAY, lambda: self.report_event_counter())
         self.assertGreater(self.wait(), 0)
 
         watcher.shutdown()
