@@ -6,4 +6,5 @@ python:
 install:
   - "pip install -r test-requirements.txt"
 script:
-  - "python -m unittest discover"
+  - "python -m tornado.test.runtests tests.test_fs_watcher"
+  - "python -m tornado.test.runtests tests.test_server"
