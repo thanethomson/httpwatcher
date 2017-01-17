@@ -53,7 +53,7 @@ class TestFileSystemWatcher(AsyncTestCase):
                 counter += 1
             callback(counter)
 
-        watcher = FileSystemWatcher(self.temp_path, on_changed=track_change_events, interval=0.01, recursive=True)
+        watcher = FileSystemWatcher(self.temp_path, on_changed=track_change_events, interval=0.1, recursive=True)
         watcher.start()
 
         write_file(self.temp_path, "file1", "Test file 1 contents")
