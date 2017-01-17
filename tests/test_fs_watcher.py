@@ -36,6 +36,7 @@ class TestFileSystemWatcher(AsyncTestCase):
 
     def track_change_events(self, events):
         self.event_counter += len(events)
+        logger.debug("Got %d incoming events" % len(events))
 
     def report_event_counter(self):
         c = self.event_counter
@@ -51,21 +52,26 @@ class TestFileSystemWatcher(AsyncTestCase):
         )
         watcher.start()
 
+        logger.debug("Creating 2 files...")
+
         write_file(self.temp_path, "file1", "Test file 1 contents")
         write_file(self.temp_path, "file2", "Test file 2 contents")
 
         IOLoop.current().call_later(CHECK_DELAY, lambda: self.report_event_counter())
         self.assertGreater(self.wait(), 0)
 
+        logger.debug("Creating 1 directory...")
         os.makedirs(os.path.join(self.temp_path, "subfolder1"))
 
         IOLoop.current().call_later(CHECK_DELAY, lambda: self.report_event_counter())
         self.assertGreater(self.wait(), 0)
 
+        logger.debug("Doing nothing...")
         # do nothing for a bit - no filesystem events
         IOLoop.current().call_later(CHECK_DELAY, lambda: self.report_event_counter())
         self.assertEqual(0, self.wait())
 
+        logger.debug("Deleting 2 files...")
         os.remove(os.path.join(self.temp_path, "file1"))
         os.remove(os.path.join(self.temp_path, "file2"))
 
