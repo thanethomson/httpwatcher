@@ -7,11 +7,13 @@ import pkg_resources
 import mimetypes
 import datetime
 import stat
+import webbrowser
 
 from tornado import gen
 import tornado.web
 import tornado.websocket
 import tornado.iostream
+import tornado.ioloop
 
 from httpwatcher.filesystem import FileSystemWatcher
 from httpwatcher.errors import MissingFolderError
@@ -28,7 +30,8 @@ __all__ = [
 class HttpWatcherServer(tornado.web.Application):
 
     def __init__(self, static_root, watch_paths=None, on_reload=None, host="localhost", port=5555,
-                 server_base_path="/", watcher_interval=1.0, recursive=True, **kwargs):
+                 server_base_path="/", watcher_interval=1.0, recursive=True, open_browser=False,
+                 open_browser_delay=1.0, **kwargs):
         """Constructor for the HTTP watcher server.
 
         Args:
@@ -41,6 +44,9 @@ class HttpWatcherServer(tornado.web.Application):
             server_base_path: If a non-standard base path is required for the server's static root, specify it here.
             watcher_interval: The maximum refresh rate of the watcher server, in seconds.
             recursive: Should the watch paths be monitored recursively?
+            open_browser: Should this watcher server attempt to automatically open the user's default web browser
+                at the root of the project?
+            open_browser_delay: The number of seconds to wait until attempting to open the user's browser.
         """
         self.static_root = os.path.abspath(static_root)
         if not os.path.exists(self.static_root) or not os.path.isdir(self.static_root):
@@ -57,6 +63,8 @@ class HttpWatcherServer(tornado.web.Application):
         self.server_base_path = ("/%s/" % server_base_path.strip("/")) if server_base_path != "/" else "/"
         self.watcher_interval = watcher_interval
         self.recursive = recursive
+        self.open_browser = open_browser
+        self.open_browser_delay = open_browser_delay
         self.livereload_js_path = os.path.abspath(os.path.realpath(pkg_resources.resource_filename(
             "httpwatcher",
             os.path.join("scripts", "livereload.js")
@@ -90,6 +98,18 @@ class HttpWatcherServer(tornado.web.Application):
         super(HttpWatcherServer, self).listen(self.port, address=self.host, **kwargs)
         self.watcher.start()
         logger.info("Started HTTP watcher server at http://%s:%d%s" % (self.host, self.port, self.server_base_path))
+
+        if self.open_browser:
+            tornado.ioloop.IOLoop.current().call_later(self.open_browser_delay, self.trigger_browser_open)
+
+    @gen.coroutine
+    def trigger_browser_open(self):
+        url = "http://%s:%d%s" % (self.host, self.port, self.server_base_path)
+        logger.debug("Attempting to open user web browser at: %s" % url)
+        try:
+            webbrowser.open(url)
+        except:
+            logger.exception("Failed to open user web browser")
 
     def shutdown(self):
         """Mechanism for cleanly shutting down the file system watcher. Must be called when Tornado's IO loop

@@ -16,7 +16,7 @@ __all__ = [
 
 
 def watch(static_root, watch_paths=None, on_reload=None, host='localhost', port=5555, server_base_path="/",
-          watcher_interval=1.0, recursive=True, verbose=False):
+          watcher_interval=1.0, recursive=True, open_browser=True, open_browser_delay=1.0):
     """Initialises an HttpWatcherServer to watch the given path for changes. Watches until the IO loop
     is terminated, or a keyboard interrupt is intercepted.
 
@@ -30,13 +30,10 @@ def watch(static_root, watch_paths=None, on_reload=None, host='localhost', port=
         server_base_path: If the content is to be served from a non-standard base path, specify it here.
         watcher_interval: The maximum refresh rate of the watcher server.
         recursive: Whether to monitor the watch path recursively.
-        verbose: Whether or not to enable verbose debug logging.
+        open_browser: Whether or not to automatically attempt to open the user's browser at the root URL of
+            the project (default: True).
+        open_browser_delay: The number of seconds to wait before attempting to open the user's browser.
     """
-    logging.basicConfig(
-        level=logging.DEBUG if verbose else logging.INFO,
-        format='%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s' if verbose else "%(message)s",
-    )
-
     server = httpwatcher.HttpWatcherServer(
         static_root,
         watch_paths=watch_paths,
@@ -45,7 +42,9 @@ def watch(static_root, watch_paths=None, on_reload=None, host='localhost', port=
         port=port,
         server_base_path=server_base_path,
         watcher_interval=watcher_interval,
-        recursive=recursive
+        recursive=recursive,
+        open_browser=open_browser,
+        open_browser_delay=open_browser_delay
     )
     server.listen()
 
@@ -58,6 +57,12 @@ def watch(static_root, watch_paths=None, on_reload=None, host='localhost', port=
 def main():
     parser = argparse.ArgumentParser(description="Web server library and command-line utility for serving static "
                                                  "files with live reload functionality")
+    parser.add_argument(
+        '--version',
+        action='store_true',
+        help="Display the current version number and exit"
+    )
+
     parser.add_argument(
         '-r', '--root',
         default=".",
@@ -85,9 +90,10 @@ def main():
         help="The base path from which the server is to serve content (default: /)"
     )
     parser.add_argument(
-        '--version',
+        '-n', '--no-browser',
         action='store_true',
-        help="Display the current version number and exit"
+        default=False,
+        help="Do not attempt to open a web browser at the server's base URL"
     )
     parser.add_argument(
         '-v', '--verbose',
@@ -98,16 +104,22 @@ def main():
     args = parser.parse_args()
 
     if args.version:
-        print("httpwatcher %s" % httpwatcher.__version__)
+        print("httpwatcher v%s" % httpwatcher.__version__)
     else:
         watch_paths = args.watch
         if watch_paths is not None:
             watch_paths = [p.strip() for p in watch_paths.split(",") if len(p.strip()) > 0]
+
+        logging.basicConfig(
+            level=logging.DEBUG if args.verbose else logging.INFO,
+            format='%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s' if args.verbose else "%(message)s",
+        )
+
         watch(
             args.root,
             watch_paths=watch_paths,
             host=args.host,
             port=args.port,
             server_base_path=args.base_path,
-            verbose=args.verbose
+            open_browser=(not args.no_browser)
         )
