@@ -5,6 +5,8 @@ python:
   - "3.6"
 install:
   - "pip install -r test-requirements.txt"
+env:
+  - HTTPWATCHER_TEST_CHECK_DELAY="5.0"
 script:
   - "python -m tornado.test.runtests tests.test_fs_watcher"
   - "python -m tornado.test.runtests tests.test_server"
