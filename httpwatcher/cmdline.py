@@ -15,14 +15,16 @@ __all__ = [
 ]
 
 
-def watch(static_root, watch_paths=None, host='localhost', port=5555, server_base_path="/", watcher_interval=1.0,
-          recursive=True, verbose=False):
+def watch(static_root, watch_paths=None, on_reload=None, host='localhost', port=5555, server_base_path="/",
+          watcher_interval=1.0, recursive=True, verbose=False):
     """Initialises an HttpWatcherServer to watch the given path for changes. Watches until the IO loop
     is terminated, or a keyboard interrupt is intercepted.
 
     Args:
         static_root: The path whose contents are to be served and watched.
         watch_paths: The paths to be watched for changes. If not supplied, this defaults to the static root.
+        on_reload: An optional callback to pass to the watcher server that will be executed just before the
+            server triggers a reload in connected clients.
         host: The host to which to bind our server.
         port: The port to which to bind our server.
         server_base_path: If the content is to be served from a non-standard base path, specify it here.
@@ -38,6 +40,7 @@ def watch(static_root, watch_paths=None, host='localhost', port=5555, server_bas
     server = httpwatcher.HttpWatcherServer(
         static_root,
         watch_paths=watch_paths,
+        on_reload=on_reload,
         host=host,
         port=port,
         server_base_path=server_base_path,

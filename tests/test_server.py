@@ -8,6 +8,7 @@ from tornado.testing import AsyncTestCase
 from tornado.httpclient import AsyncHTTPClient
 from tornado.websocket import websocket_connect
 from tornado.ioloop import IOLoop
+from tornado.queues import Queue
 import html5lib
 
 from httpwatcher import HttpWatcherServer
@@ -23,6 +24,7 @@ class TestHttpWatcherServer(AsyncTestCase):
     temp_path = None
     watcher_server = None
     expected_livereload_js = read_resource(os.path.join("scripts", "livereload.js"))
+    reload_tracker_queue = None
 
     def setUp(self):
         super(TestHttpWatcherServer, self).setUp()
@@ -39,6 +41,7 @@ class TestHttpWatcherServer(AsyncTestCase):
             "<!DOCTYPE html><html><head><title>Hello world</title></head>" +
             "<body>Test</body></html>"
         )
+        self.reload_tracker_queue = Queue()
 
     def test_watching(self):
         self.watcher_server = HttpWatcherServer(
@@ -61,6 +64,26 @@ class TestHttpWatcherServer(AsyncTestCase):
         )
         self.watcher_server.listen()
         self.exec_watch_server_tests("/non-standard/")
+        self.watcher_server.shutdown()
+
+    def track_reload_custom(self):
+        self.reload_tracker_queue.put("Gotcha!")
+
+    def test_custom_callback(self):
+        # starts off empty
+        self.assertEqual(self.reload_tracker_queue.qsize(), 0)
+
+        self.watcher_server = HttpWatcherServer(
+            self.temp_path,
+            on_reload=lambda: self.track_reload_custom(),
+            host="localhost",
+            port=5555,
+            watcher_interval=0.1
+        )
+        self.watcher_server.listen()
+        self.exec_watch_server_tests("")
+        # make sure our custom callback has been called
+        self.assertGreater(self.reload_tracker_queue.qsize(), 0)
         self.watcher_server.shutdown()
 
     def exec_watch_server_tests(self, base_path):

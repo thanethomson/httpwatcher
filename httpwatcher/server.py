@@ -27,14 +27,15 @@ __all__ = [
 
 class HttpWatcherServer(tornado.web.Application):
 
-    def __init__(self, static_root, watch_paths=None, host="localhost", port=5555, server_base_path="/",
-                 watcher_interval=1.0, recursive=True, **kwargs):
+    def __init__(self, static_root, watch_paths=None, on_reload=None, host="localhost", port=5555,
+                 server_base_path="/", watcher_interval=1.0, recursive=True, **kwargs):
         """Constructor for the HTTP watcher server.
 
         Args:
             static_root: The root path from which to serve static files.
             watch_paths: One or more paths to watch for changes. If not specified, it will be assumed that the
                 static root is to be monitored for changes.
+            on_reload: An optional callback to call prior to triggering the reload operation in connected clients.
             host: The host IP address to which to bind.
             port: The port to which to bind.
             server_base_path: If a non-standard base path is required for the server's static root, specify it here.
@@ -46,6 +47,11 @@ class HttpWatcherServer(tornado.web.Application):
             raise MissingFolderError(self.static_root)
 
         self.watch_paths = watch_paths if watch_paths is not None else [static_root]
+
+        if on_reload is not None:
+            assert callable(on_reload), "If a callback is supplied for HttpWatcherServer, it must be callable"
+        self.on_reload = on_reload
+
         self.host = host
         self.port = port
         self.server_base_path = ("/%s/" % server_base_path.strip("/")) if server_base_path != "/" else "/"
@@ -106,6 +112,10 @@ class HttpWatcherServer(tornado.web.Application):
 
     @gen.coroutine
     def trigger_reload(self, *args):
+        # call our callback first
+        if callable(self.on_reload):
+            self.on_reload()
+
         self.broadcast_to_clients({"command": "reload"})
 
 
