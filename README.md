@@ -51,11 +51,12 @@ folder and serve your content from http://localhost:5555 as follows:
 With all possible options:
 
 ```bash
-> httpwatcher --path /path/to/html \    # serve files from the folder /path/to/html
-              --host 127.0.0.1 \        # bind to 127.0.0.1
-              --port 5556 \             # bind to port 5556
-              --base-path /blog/ \      # serve static content from http://127.0.0.1:5556/blog/
-              --verbose                 # enable verbose debug logging
+> httpwatcher --root /path/to/html \      # static root from which to serve files
+              --watch "/path1,/path2" \   # comma-separated list of paths to watch (defaults to the static root)
+              --host 127.0.0.1 \          # bind to 127.0.0.1
+              --port 5556 \               # bind to port 5556
+              --base-path /blog/ \        # serve static content from http://127.0.0.1:5556/blog/
+              --verbose                   # enable verbose debug logging
 ```
 
 ### Library Usage
@@ -67,12 +68,13 @@ from httpwatcher import HttpWatcherServer
 from tornado.ioloop import IOLoop
 
 server = HttpWatcherServer(
-    "/path/to/html",               # serve files from the folder /path/to/html
-    host="127.0.0.1",              # bind to host 127.0.0.1
-    port=5556,                     # bind to port 5556
-    server_base_path="/blog/",     # serve static content from http://127.0.0.1:5556/blog/
-    watcher_interval=1.0,          # maximum reload frequency (seconds)
-    recursive=True                 # watch for changes in /path/to/html recursively
+    "/path/to/html",                      # serve files from the folder /path/to/html
+    watch_paths=["/path1", "/path2"],     # watch these paths for changes
+    host="127.0.0.1",                     # bind to host 127.0.0.1
+    port=5556,                            # bind to port 5556
+    server_base_path="/blog/",            # serve static content from http://127.0.0.1:5556/blog/
+    watcher_interval=1.0,                 # maximum reload frequency (seconds)
+    recursive=True                        # watch for changes in /path/to/html recursively
 )
 server.listen()
 
