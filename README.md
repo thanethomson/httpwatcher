@@ -64,12 +64,26 @@ Make sure `httpwatcher` is installed as a dependency for your Python
 project, and then:
 
 ```python
+import httpwatcher
+
+# Just watch /path/to/html, and serve from that same path
+httpwatcher.watch("/path/to/html")
+```
+
+To use the watcher server directly and have more control over the
+I/O loop:
+
+```python
 from httpwatcher import HttpWatcherServer
 from tornado.ioloop import IOLoop
+
+def custom_callback():
+    print("Web server reloading!")
 
 server = HttpWatcherServer(
     "/path/to/html",                      # serve files from the folder /path/to/html
     watch_paths=["/path1", "/path2"],     # watch these paths for changes
+    on_reload=custom_callback,            # optionally specify a custom callback to be called just before the server reloads
     host="127.0.0.1",                     # bind to host 127.0.0.1
     port=5556,                            # bind to port 5556
     server_base_path="/blog/",            # serve static content from http://127.0.0.1:5556/blog/
@@ -84,6 +98,11 @@ try:
 except KeyboardInterrupt:
     server.shutdown()
 ```
+
+Note that `httpwatcher.watch` takes the same parameters as the
+constructor parameters for `HttpWatcherServer`. It's just a
+convenience method provided to instantiate and run a simple
+`HttpWatcherServer`.
 
 ## Inner Workings
 `httpwatcher` makes extensive use of the
