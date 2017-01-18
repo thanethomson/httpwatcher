@@ -39,9 +39,10 @@ drop-in library within your own Python application.
 
 ### Command-Line Usage
 The quickest way to get up and running is to watch the current
-folder and serve your content from http://localhost:5555 as follows:
+folder and serve your content from `http://localhost:5555` as follows:
 
 ```bash
+# Also opens your web browser at http://localhost:5555
 > httpwatcher
 
 # To get more help
@@ -57,6 +58,7 @@ With all possible options:
               --port 5556 \               # bind to port 5556
               --base-path /blog/ \        # serve static content from http://127.0.0.1:5556/blog/
               --verbose                   # enable verbose debug logging
+              --no-browser                # causes httpwatcher to not attempt to open your web browser automatically
 ```
 
 ### Library Usage
@@ -68,6 +70,17 @@ import httpwatcher
 
 # Just watch /path/to/html, and serve from that same path
 httpwatcher.watch("/path/to/html")
+```
+
+**Note** that, unlike `HttpWatcherServer`, the `httpwatcher.watch`
+function automatically assumes that you want to open your default web
+browser at the base URL of the served site. To avoid this, do the
+following:
+
+```python
+import httpwatcher
+
+httpwatcher.watch("/path/to/html", open_browser=False)
 ```
 
 To use the watcher server directly and have more control over the
@@ -88,7 +101,8 @@ server = HttpWatcherServer(
     port=5556,                            # bind to port 5556
     server_base_path="/blog/",            # serve static content from http://127.0.0.1:5556/blog/
     watcher_interval=1.0,                 # maximum reload frequency (seconds)
-    recursive=True                        # watch for changes in /path/to/html recursively
+    recursive=True,                       # watch for changes in /path/to/html recursively
+    open_browser=True                     # automatically attempt to open a web browser (default: False for HttpWatcherServer)
 )
 server.listen()
 
@@ -99,8 +113,9 @@ except KeyboardInterrupt:
     server.shutdown()
 ```
 
-Note that `httpwatcher.watch` takes the same parameters as the
-constructor parameters for `HttpWatcherServer`. It's just a
+`httpwatcher.watch` takes mostly the same parameters as the
+constructor parameters for `HttpWatcherServer` (except, as mentioned
+earlier, for the `open_browser` parameter). It's just a
 convenience method provided to instantiate and run a simple
 `HttpWatcherServer`.
 
