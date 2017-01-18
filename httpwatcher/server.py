@@ -14,6 +14,7 @@ import tornado.websocket
 import tornado.iostream
 
 from httpwatcher.filesystem import FileSystemWatcher
+from httpwatcher.errors import MissingFolderError
 
 import logging
 logger = logging.getLogger(__name__)
@@ -26,12 +27,25 @@ __all__ = [
 
 class HttpWatcherServer(tornado.web.Application):
 
-    def __init__(self, watch_path, host="localhost", port=5555, server_base_path="/", watcher_interval=1.0,
-                 recursive=True, **kwargs):
-        self.watch_path = os.path.abspath(os.path.realpath(watch_path))
-        assert os.path.exists(self.watch_path) and os.path.isdir(self.watch_path), \
-            "Watch path must be an existing folder: %s" % self.watch_path
+    def __init__(self, static_root, watch_paths=None, host="localhost", port=5555, server_base_path="/",
+                 watcher_interval=1.0, recursive=True, **kwargs):
+        """Constructor for the HTTP watcher server.
 
+        Args:
+            static_root: The root path from which to serve static files.
+            watch_paths: One or more paths to watch for changes. If not specified, it will be assumed that the
+                static root is to be monitored for changes.
+            host: The host IP address to which to bind.
+            port: The port to which to bind.
+            server_base_path: If a non-standard base path is required for the server's static root, specify it here.
+            watcher_interval: The maximum refresh rate of the watcher server, in seconds.
+            recursive: Should the watch paths be monitored recursively?
+        """
+        self.static_root = os.path.abspath(static_root)
+        if not os.path.exists(self.static_root) or not os.path.isdir(self.static_root):
+            raise MissingFolderError(self.static_root)
+
+        self.watch_paths = watch_paths if watch_paths is not None else [static_root]
         self.host = host
         self.port = port
         self.server_base_path = ("/%s/" % server_base_path.strip("/")) if server_base_path != "/" else "/"
@@ -51,7 +65,7 @@ class HttpWatcherServer(tornado.web.Application):
                 "watcher_server": self
             }),
             (r"%s(.*)" % self.server_base_path, LiveReloadStaticFileHandler, {
-                "path": self.watch_path,
+                "path": self.static_root,
                 "livereload_script_url": "http://%s:%d/livereload.js" % (self.host, self.port),
                 "websocket_url": "ws://%s:%d/livereload" % (self.host, self.port)
             })
@@ -59,7 +73,7 @@ class HttpWatcherServer(tornado.web.Application):
         super(HttpWatcherServer, self).__init__(handlers, **kwargs)
         # create our watcher instance for the watch path
         self.watcher = FileSystemWatcher(
-            self.watch_path,
+            self.watch_paths,
             on_changed=self.trigger_reload,
             interval=self.watcher_interval,
             recursive=recursive

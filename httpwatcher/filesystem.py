@@ -1,14 +1,17 @@
 # -*- coding: utf-8 -*-
 
 from __future__ import unicode_literals
+from past.builtins import basestring
 
 import os.path
 
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
+from httpwatcher.errors import MissingFolderError
+
 from tornado import gen
-from tornado.ioloop import PeriodicCallback, IOLoop
+from tornado.ioloop import PeriodicCallback
 from tornado.queues import Queue
 
 import logging
@@ -21,27 +24,35 @@ __all__ = [
 
 class FileSystemWatcher(object):
 
-    def __init__(self, watch_path, on_changed=None, interval=1.0, recursive=True):
+    def __init__(self, watch_paths, on_changed=None, interval=1.0, recursive=True):
         """Constructor.
 
         Args:
-            watch_path: The filesystem path to watch for changes.
+            watch_paths: A list of filesystem paths to watch for changes.
             on_changed: Callback to call when one or more changes to the watch path are detected.
             interval: The minimum interval at which to notify about changes (in seconds).
             recursive: Should the watch path be monitored recursively for changes?
         """
-        assert os.path.isdir(watch_path), "Invalid watch path specified for file system watcher: %s" % watch_path
-        self.watch_path = watch_path
+        if isinstance(watch_paths, basestring):
+            watch_paths = [watch_paths]
+
+        watch_paths = [os.path.abspath(path) for path in watch_paths]
+        for path in watch_paths:
+            if not os.path.exists(path) or not os.path.isdir(path):
+                raise MissingFolderError(path)
+
+        self.watch_paths = watch_paths
         self.interval = interval * 1000.0
         self.recursive = recursive
         self.periodic_callback = PeriodicCallback(self.check_fs_events, self.interval)
         self.on_changed = on_changed
         self.observer = Observer()
-        self.observer.schedule(
-            WatcherEventHandler(self),
-            self.watch_path,
-            self.recursive
-        )
+        for path in self.watch_paths:
+            self.observer.schedule(
+                WatcherEventHandler(self),
+                path,
+                self.recursive
+            )
         self.started = False
         self.fs_event_queue = Queue()
 
@@ -62,7 +73,7 @@ class FileSystemWatcher(object):
             self.observer.start()
             self.periodic_callback.start()
             self.started = True
-            logger.debug("Started file system watcher for path: %s" % self.watch_path)
+            logger.debug("Started file system watcher for paths:\n%s" % "\n".join(self.watch_paths))
 
     def shutdown(self, timeout=None):
         if self.started:
@@ -70,7 +81,7 @@ class FileSystemWatcher(object):
             self.observer.stop()
             self.observer.join(timeout=timeout)
             self.started = False
-            logger.debug("Shut down file system watcher for path: %s" % self.watch_path)
+            logger.debug("Shut down file system watcher for path:\n%s" % "\n".join(self.watch_paths))
 
 
 class WatcherEventHandler(FileSystemEventHandler):
