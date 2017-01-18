@@ -5,4 +5,4 @@ from httpwatcher.server import *
 from httpwatcher.filesystem import *
 from httpwatcher.errors import *
 
-__version__ = "0.3.0"
+__version__ = "0.4.0"
