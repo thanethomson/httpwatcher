@@ -23,7 +23,7 @@ class TestHttpWatcherServer(AsyncTestCase):
 
     temp_path = None
     watcher_server = None
-    expected_livereload_js = read_resource(os.path.join("scripts", "livereload.js"))
+    expected_httpwatcher_js = read_resource(os.path.join("scripts", "httpwatcher.min.js"))
     reload_tracker_queue = None
 
     def setUp(self):
@@ -98,8 +98,8 @@ class TestHttpWatcherServer(AsyncTestCase):
 
         script_tags = html_findall(html, ns, "./{ns}body/{ns}script")
         self.assertEqual(2, len(script_tags))
-        self.assertEqual("http://localhost:5555/livereload.js", script_tags[0].attrib['src'])
-        self.assertEqual('livereload("ws://localhost:5555/livereload");', script_tags[1].text.strip())
+        self.assertEqual("http://localhost:5555/httpwatcher.min.js", script_tags[0].attrib['src'])
+        self.assertEqual('httpwatcher("ws://localhost:5555/httpwatcher");', script_tags[1].text.strip())
 
         # if it's a non-standard base path
         if len(base_path.strip("/")) > 0:
@@ -108,15 +108,15 @@ class TestHttpWatcherServer(AsyncTestCase):
             response = self.wait()
             self.assertEqual(404, response.code)
 
-        # fetch the livereload.js file
-        client.fetch("http://localhost:5555/livereload.js", self.stop)
+        # fetch the httpwatcher.min.js file
+        client.fetch("http://localhost:5555/httpwatcher.min.js", self.stop)
         response = self.wait()
 
         self.assertEqual(200, response.code)
-        self.assertEqual(self.expected_livereload_js, response.body)
+        self.assertEqual(self.expected_httpwatcher_js, response.body)
 
         # now connect via WebSockets
-        websocket_connect("ws://localhost:5555/livereload").add_done_callback(
+        websocket_connect("ws://localhost:5555/httpwatcher").add_done_callback(
             lambda future: self.stop(future.result())
         )
         websocket_client = self.wait()

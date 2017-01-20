@@ -1,0 +1,28 @@
+{
+  "name": "httpwatcher",
+  "version": "0.5.0",
+  "description": "Web server library and command-line utility for serving static files with live reload functionality",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "devDependencies": {
+    "reconnectingwebsocket": "^1.0.0",
+    "uglify-js": "^2.7.5",
+    "webpack": "^1.14.0"
+  },
+  "scripts": {
+    "build": "webpack && uglifyjs ./httpwatcher/scripts/httpwatcher.bundle.js -c -m -o ./httpwatcher/scripts/httpwatcher.min.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thanethomson/httpwatcher.git"
+  },
+  "author": "Thane Thomson <connect@thanethomson.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/thanethomson/httpwatcher/issues"
+  },
+  "homepage": "https://github.com/thanethomson/httpwatcher#readme"
+}

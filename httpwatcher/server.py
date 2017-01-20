@@ -65,23 +65,23 @@ class HttpWatcherServer(tornado.web.Application):
         self.recursive = recursive
         self.open_browser = open_browser
         self.open_browser_delay = open_browser_delay
-        self.livereload_js_path = os.path.abspath(os.path.realpath(pkg_resources.resource_filename(
+        self.httpwatcher_js_path = os.path.abspath(os.path.realpath(pkg_resources.resource_filename(
             "httpwatcher",
-            os.path.join("scripts", "livereload.js")
+            os.path.join("scripts", "httpwatcher.min.js")
         )))
-        logger.debug("livereload.js path: %s" % self.livereload_js_path)
+        logger.debug("httpwatcher.min.js path: %s" % self.httpwatcher_js_path)
 
         handlers = [
-            (r"/livereload.js", LiveReloadStaticScriptHandler, {
-                "path": self.livereload_js_path
+            (r"/httpwatcher.min.js", HttpWatcherStaticScriptHandler, {
+                "path": self.httpwatcher_js_path
             }),
-            (r"/livereload", LiveReloadWebSocketHandler, {
+            (r"/httpwatcher", HttpWatcherWebSocketHandler, {
                 "watcher_server": self
             }),
-            (r"%s(.*)" % self.server_base_path, LiveReloadStaticFileHandler, {
+            (r"%s(.*)" % self.server_base_path, HttpWatcherStaticFileHandler, {
                 "path": self.static_root,
-                "livereload_script_url": "http://%s:%d/livereload.js" % (self.host, self.port),
-                "websocket_url": "ws://%s:%d/livereload" % (self.host, self.port)
+                "httpwatcher_script_url": "http://%s:%d/httpwatcher.min.js" % (self.host, self.port),
+                "websocket_url": "ws://%s:%d/httpwatcher" % (self.host, self.port)
             })
         ]
         super(HttpWatcherServer, self).__init__(handlers, **kwargs)
@@ -139,17 +139,17 @@ class HttpWatcherServer(tornado.web.Application):
         self.broadcast_to_clients({"command": "reload"})
 
 
-class LiveReloadStaticFileHandler(tornado.web.RequestHandler):
+class HttpWatcherStaticFileHandler(tornado.web.RequestHandler):
     """Similar to tornado.web.StaticFileHandler, but without all of the caching mechanisms and with the
     WebSocket JavaScript injection ability."""
 
-    WEBSOCKET_JS_TEMPLATE = '<script type="application/javascript" src="{livereload_script_url}"></script>\n' \
-                            '<script type="application/javascript">livereload("{websocket_url}");</script>\n' \
+    WEBSOCKET_JS_TEMPLATE = '<script type="application/javascript" src="{httpwatcher_script_url}"></script>\n' \
+                            '<script type="application/javascript">httpwatcher("{websocket_url}");</script>\n' \
                             '</body>'
 
     static_path = None
     default_filenames = ["index.html", "index.htm"]
-    livereload_script_url = None
+    httpwatcher_script_url = None
     websocket_url = None
     websocket_js_template = None
     request_abspath = None
@@ -159,22 +159,22 @@ class LiveReloadStaticFileHandler(tornado.web.RequestHandler):
     stat_result = None
 
     def initialize(self, **kwargs):
-        assert "path" in kwargs, "Path parameter for LiveReloadStaticFileHandler is missing"
-        assert "livereload_script_url" in kwargs, "LiveReload script URL for LiveReloadStaticFileHandler is missing"
-        assert "websocket_url" in kwargs, "WebSocket URL for LiveReloadStaticFileHandler is missing"
+        assert "path" in kwargs, "Path parameter for HttpWatcherStaticFileHandler is missing"
+        assert "httpwatcher_script_url" in kwargs, "HttpWatcher script URL for HttpWatcherStaticFileHandler is missing"
+        assert "websocket_url" in kwargs, "WebSocket URL for HttpWatcherStaticFileHandler is missing"
 
         self.static_path = kwargs.pop("path")
-        assert os.path.isabs(self.static_path), "Path parameter for LiveReloadStaticFileHandler must be absolute"
+        assert os.path.isabs(self.static_path), "Path parameter for HttpWatcherStaticFileHandler must be absolute"
 
         if "default_filenames" in kwargs:
             assert isinstance(kwargs["default_filenames"], list), \
-                "Default filenames for LiveReloadStaticFileHandler must be supplied as a list"
+                "Default filenames for HttpWatcherStaticFileHandler must be supplied as a list"
             self.default_filenames = kwargs.pop("default_filenames")
 
-        self.livereload_script_url = kwargs.pop("livereload_script_url")
+        self.httpwatcher_script_url = kwargs.pop("httpwatcher_script_url")
         self.websocket_url = kwargs.pop("websocket_url")
-        self.websocket_js_template = LiveReloadStaticFileHandler.WEBSOCKET_JS_TEMPLATE.format(
-            livereload_script_url=self.livereload_script_url,
+        self.websocket_js_template = HttpWatcherStaticFileHandler.WEBSOCKET_JS_TEMPLATE.format(
+            httpwatcher_script_url=self.httpwatcher_script_url,
             websocket_url=self.websocket_url
         ).encode("utf-8")
 
@@ -292,7 +292,7 @@ class LiveReloadStaticFileHandler(tornado.web.RequestHandler):
             return "application/octet-stream"
 
 
-class LiveReloadStaticScriptHandler(tornado.web.RequestHandler):
+class HttpWatcherStaticScriptHandler(tornado.web.RequestHandler):
 
     path = None
     contents = None
@@ -300,7 +300,7 @@ class LiveReloadStaticScriptHandler(tornado.web.RequestHandler):
     def initialize(self, **kwargs):
         assert "path" in kwargs and os.path.exists(kwargs['path']) and os.path.isabs(kwargs['path']) and \
             os.path.isfile(kwargs['path']), \
-            "LiveReloadStaticScriptHandler expects an absolute filesystem path for the livereload.js script file"
+            "HttpWatcherStaticScriptHandler expects an absolute filesystem path for the httpwatcher.min.js script file"
         self.path = kwargs['path']
         with open(self.path, "rb") as f:
             self.contents = f.read()
@@ -317,14 +317,14 @@ class LiveReloadStaticScriptHandler(tornado.web.RequestHandler):
             return
 
 
-class LiveReloadWebSocketHandler(tornado.websocket.WebSocketHandler):
+class HttpWatcherWebSocketHandler(tornado.websocket.WebSocketHandler):
 
     watcher_server = None
 
     def initialize(self, **kwargs):
-        assert "watcher_server" in kwargs, "Watcher server must be supplied to LiveReloadWebSocketHandler"
+        assert "watcher_server" in kwargs, "Watcher server must be supplied to HttpWatcherWebSocketHandler"
         self.watcher_server = kwargs.pop('watcher_server')
-        super(LiveReloadWebSocketHandler, self).initialize()
+        super(HttpWatcherWebSocketHandler, self).initialize()
 
     def open(self, *args, **kwargs):
         self.watcher_server.register_client(self)
