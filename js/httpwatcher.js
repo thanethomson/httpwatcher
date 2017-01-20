@@ -4,7 +4,7 @@
 
 var connection = null;
 
-function livereload(webSocketUrl) {
+function httpwatcher(webSocketUrl) {
     if (connection == null) {
         connection = new WebSocket(webSocketUrl);
         connection.onerror = function(e) {

@@ -99,3 +99,6 @@ pip-selfcheck.json
 # Generated folders
 public/
 
+# NodeJS
+/node_modules/
+
