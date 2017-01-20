@@ -66,7 +66,7 @@ With all possible options:
                   --host 127.0.0.1 \          # bind to 127.0.0.1
                   --port 5556 \               # bind to port 5556
                   --base-path /blog/ \        # serve static content from http://127.0.0.1:5556/blog/
-                  --verbose                   # enable verbose debug logging
+                  --verbose \                 # enable verbose debug logging
                   --no-browser                # causes httpwatcher to not attempt to open your web browser automatically
 
 Library Usage
@@ -139,10 +139,10 @@ automatically have two ``<script>`` tags injected to facilitate the
 WebSockets connection back to the server.
 
 The WebSockets endpoint is located at
-``http://localhost:5555/livereload`` by default, and the JavaScript file
-that facilitates the reloading is located at
-``http://localhost:5555/livereload.js`` by default (depending on your
-host and port settings).
+``http://localhost:5555/httpwatcher`` by default, and the JavaScript
+file that facilitates the reloading is located at
+``http://localhost:5555/httpwatcher.min.js`` by default (depending on
+your host and port settings).
 
 Background
 ----------
