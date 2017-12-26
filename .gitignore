@@ -102,3 +102,6 @@ public/
 # NodeJS
 /node_modules/
 
+# VS Code folder
+/.vscode/
+
