@@ -55,21 +55,30 @@ class HttpWatcherServer(tornado.web.Application):
         self.watch_paths = watch_paths if watch_paths is not None else [static_root]
 
         if on_reload is not None:
-            assert callable(on_reload), "If a callback is supplied for HttpWatcherServer, it must be callable"
+            if not callable(on_reload):
+                raise ValueError(
+                    "If a callback is supplied for HttpWatcherServer, it must be callable"
+                )
         self.on_reload = on_reload
 
         self.host = host
         self.port = port
-        self.server_base_path = ("/%s/" % server_base_path.strip("/")) if server_base_path != "/" else "/"
+        self.server_base_path = server_base_path.strip("/") if server_base_path else ""
+        self.server_base_path = ("/%s/" % self.server_base_path) \
+            if self.server_base_path else "/"
         self.watcher_interval = watcher_interval
         self.recursive = recursive
         self.open_browser = open_browser
         self.open_browser_delay = open_browser_delay
-        self.httpwatcher_js_path = os.path.abspath(os.path.realpath(pkg_resources.resource_filename(
-            "httpwatcher",
-            os.path.join("scripts", "httpwatcher.min.js")
-        )))
-        logger.debug("httpwatcher.min.js path: %s" % self.httpwatcher_js_path)
+        self.httpwatcher_js_path = os.path.abspath(
+            os.path.realpath(
+                pkg_resources.resource_filename(
+                    "httpwatcher",
+                    os.path.join("scripts", "httpwatcher.min.js")
+                )
+            )
+        )
+        logger.debug("httpwatcher.min.js path: %s", self.httpwatcher_js_path)
 
         handlers = [
             (r"/httpwatcher.min.js", HttpWatcherStaticScriptHandler, {
@@ -80,8 +89,11 @@ class HttpWatcherServer(tornado.web.Application):
             }),
             (r"%s(.*)" % self.server_base_path, HttpWatcherStaticFileHandler, {
                 "path": self.static_root,
-                "httpwatcher_script_url": "http://%s:%d/httpwatcher.min.js" % (self.host, self.port),
-                "websocket_url": "ws://%s:%d/httpwatcher" % (self.host, self.port)
+                "httpwatcher_script_url": "http://%s:%d/httpwatcher.min.js" % (
+                    self.host, self.port
+                ),
+                "websocket_url": "ws://%s:%d/httpwatcher" % (self.host, self.port),
+                "server_base_path": self.server_base_path
             })
         ]
         super(HttpWatcherServer, self).__init__(handlers, **kwargs)
@@ -97,15 +109,21 @@ class HttpWatcherServer(tornado.web.Application):
     def listen(self, **kwargs):
         super(HttpWatcherServer, self).listen(self.port, address=self.host, **kwargs)
         self.watcher.start()
-        logger.info("Started HTTP watcher server at http://%s:%d%s" % (self.host, self.port, self.server_base_path))
+        logger.info(
+            "Started HTTP watcher server at http://%s:%d%s",
+            self.host, self.port, self.server_base_path
+        )
 
         if self.open_browser:
-            tornado.ioloop.IOLoop.current().call_later(self.open_browser_delay, self.trigger_browser_open)
+            tornado.ioloop.IOLoop.current().call_later(
+                self.open_browser_delay,
+                self.trigger_browser_open
+            )
 
     @gen.coroutine
     def trigger_browser_open(self):
         url = "http://%s:%d%s" % (self.host, self.port, self.server_base_path)
-        logger.debug("Attempting to open user web browser at: %s" % url)
+        logger.debug("Attempting to open user web browser at: %s", url)
         try:
             webbrowser.open(url)
         except:
@@ -126,7 +144,10 @@ class HttpWatcherServer(tornado.web.Application):
             self.connected_clients.remove(client)
 
     def broadcast_to_clients(self, msg):
-        logger.debug("Broadcasting message to %d connected client(s)" % len(self.connected_clients))
+        logger.debug(
+            "Broadcasting message to %d connected client(s)",
+            len(self.connected_clients)
+        )
         for client in self.connected_clients:
             client.write_message(msg)
 
@@ -159,16 +180,23 @@ class HttpWatcherStaticFileHandler(tornado.web.RequestHandler):
     stat_result = None
 
     def initialize(self, **kwargs):
-        assert "path" in kwargs, "Path parameter for HttpWatcherStaticFileHandler is missing"
-        assert "httpwatcher_script_url" in kwargs, "HttpWatcher script URL for HttpWatcherStaticFileHandler is missing"
-        assert "websocket_url" in kwargs, "WebSocket URL for HttpWatcherStaticFileHandler is missing"
+        for param in ["path", "httpwatcher_script_url", "websocket_url", "server_base_path"]:
+            if param not in kwargs:
+                raise ValueError(
+                    "Parameter \"%s\" for HttpWatcherStaticFileHandler is missing" % param
+                )
 
         self.static_path = kwargs.pop("path")
-        assert os.path.isabs(self.static_path), "Path parameter for HttpWatcherStaticFileHandler must be absolute"
+        if not os.path.isabs(self.static_path):
+            raise ValueError(
+                "Parameter \"path\" for HttpWatcherStaticFileHandler must be absolute"
+            )
 
         if "default_filenames" in kwargs:
-            assert isinstance(kwargs["default_filenames"], list), \
-                "Default filenames for HttpWatcherStaticFileHandler must be supplied as a list"
+            if not isinstance(kwargs["default_filenames"], list):
+                raise ValueError(
+                    "Default filenames for HttpWatcherStaticFileHandler must be supplied as a list"
+                )
             self.default_filenames = kwargs.pop("default_filenames")
 
         self.httpwatcher_script_url = kwargs.pop("httpwatcher_script_url")
@@ -177,6 +205,7 @@ class HttpWatcherStaticFileHandler(tornado.web.RequestHandler):
             httpwatcher_script_url=self.httpwatcher_script_url,
             websocket_url=self.websocket_url
         ).encode("utf-8")
+        self.server_base_path = kwargs.pop('server_base_path')
 
     def head(self, path):
         return self.get(path, include_body=False)
@@ -186,7 +215,10 @@ class HttpWatcherStaticFileHandler(tornado.web.RequestHandler):
         if path == "":
             path = "/"
 
-        abspath = self.validate_path(path, os.path.join(self.static_path, self.parse_url_path(path)))
+        abspath = self.validate_path(
+            path,
+            os.path.join(self.static_path, self.parse_url_path(path))
+        )
         if abspath is None:
             return
 
@@ -216,7 +248,10 @@ class HttpWatcherStaticFileHandler(tornado.web.RequestHandler):
         # if it's an existing directory
         if os.path.exists(abspath) and os.path.isdir(abspath):
             if not url_path.endswith("/"):
-                self.redirect(url_path+"/", permanent=True)
+                self.redirect(
+                    "%s%s/" % (self.server_base_path, url_path.strip('/')),
+                    permanent=True
+                )
                 return
 
             abspath = self.find_first_default_file(abspath)
@@ -298,9 +333,12 @@ class HttpWatcherStaticScriptHandler(tornado.web.RequestHandler):
     contents = None
 
     def initialize(self, **kwargs):
-        assert "path" in kwargs and os.path.exists(kwargs['path']) and os.path.isabs(kwargs['path']) and \
-            os.path.isfile(kwargs['path']), \
-            "HttpWatcherStaticScriptHandler expects an absolute filesystem path for the httpwatcher.min.js script file"
+        if "path" not in kwargs or not os.path.exists(kwargs['path']) or \
+                not os.path.isabs(kwargs['path']) or not os.path.isfile(kwargs['path']):
+            raise ValueError(
+                "HttpWatcherStaticScriptHandler expects an absolute filesystem path for the " +
+                "httpwatcher.min.js script file"
+            )
         self.path = kwargs['path']
         with open(self.path, "rb") as f:
             self.contents = f.read()
@@ -322,7 +360,8 @@ class HttpWatcherWebSocketHandler(tornado.websocket.WebSocketHandler):
     watcher_server = None
 
     def initialize(self, **kwargs):
-        assert "watcher_server" in kwargs, "Watcher server must be supplied to HttpWatcherWebSocketHandler"
+        if "watcher_server" not in kwargs:
+            raise ValueError("Watcher server must be supplied to HttpWatcherWebSocketHandler")
         self.watcher_server = kwargs.pop('watcher_server')
         super(HttpWatcherWebSocketHandler, self).initialize()
 
@@ -335,4 +374,4 @@ class HttpWatcherWebSocketHandler(tornado.websocket.WebSocketHandler):
         logger.debug("Client WebSocket connection closed")
 
     def on_message(self, message):
-        logger.debug("Ignoring message from WebSocket client: %s" % message)
+        logger.debug("Ignoring message from WebSocket client: %s", message)

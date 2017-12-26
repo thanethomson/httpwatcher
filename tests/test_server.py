@@ -2,6 +2,7 @@
 
 from __future__ import unicode_literals
 
+import os
 import os.path
 
 from tornado.testing import AsyncTestCase
@@ -29,10 +30,15 @@ class TestHttpWatcherServer(AsyncTestCase):
     def setUp(self):
         super(TestHttpWatcherServer, self).setUp()
 
+        # by default, only log warning messages
         logging.basicConfig(
-            level=logging.DEBUG,
+            level=logging.WARNING,
             format='%(asctime)s\t%(name)s\t%(levelname)s\t%(message)s',
         )
+        debug_packages = os.environ.get('DEBUG_PACKAGES', 'httpwatcher').split(',')
+        for pkg in debug_packages:
+            pkg_logger = logging.getLogger(pkg)
+            pkg_logger.setLevel(logging.DEBUG)
 
         self.temp_path = init_temp_path()
         write_file(
@@ -40,6 +46,22 @@ class TestHttpWatcherServer(AsyncTestCase):
             "index.html",
             "<!DOCTYPE html><html><head><title>Hello world</title></head>" +
             "<body>Test</body></html>"
+        )
+        self.subfolder_path = os.path.join(self.temp_path, "subfolder")
+        os.makedirs(self.subfolder_path)
+        write_file(
+            self.subfolder_path,
+            "index.html",
+            "<!DOCTYPE html><html><head><title>Level 1 Test</title></head>" +
+            "<body>Level 1 Test Body</body></html>"
+        )
+        self.subsubfolder_path = os.path.join(self.subfolder_path, "subsubfolder")
+        os.makedirs(self.subsubfolder_path)
+        write_file(
+            self.subsubfolder_path,
+            "index.html",
+            "<!DOCTYPE html><html><head><title>Level 2 Test</title></head>" +
+            "<body>Level 2 Test Body</body></html>"
         )
         self.reload_tracker_queue = Queue()
 
@@ -51,7 +73,7 @@ class TestHttpWatcherServer(AsyncTestCase):
             watcher_interval=0.1
         )
         self.watcher_server.listen()
-        self.exec_watch_server_tests("")
+        self.exec_watch_server_tests("/")
         self.watcher_server.shutdown()
 
     def test_watching_non_standard_base_path(self):
@@ -87,8 +109,11 @@ class TestHttpWatcherServer(AsyncTestCase):
         self.watcher_server.shutdown()
 
     def exec_watch_server_tests(self, base_path):
+        _base_path = base_path.strip('/')
+        if _base_path:
+            _base_path += "/"
         client = AsyncHTTPClient()
-        client.fetch("http://localhost:5555"+base_path, self.stop)
+        client.fetch("http://localhost:5555/%s" % _base_path, self.stop)
         response = self.wait()
 
         self.assertEqual(200, response.code)
@@ -102,11 +127,55 @@ class TestHttpWatcherServer(AsyncTestCase):
         self.assertEqual('httpwatcher("ws://localhost:5555/httpwatcher");', script_tags[1].text.strip())
 
         # if it's a non-standard base path
-        if len(base_path.strip("/")) > 0:
+        if len(_base_path) > 0:
             # we shouldn't be able to find anything at the root base path
             client.fetch("http://localhost:5555/", self.stop)
             response = self.wait()
             self.assertEqual(404, response.code)
+
+        # test a file from the sub-path
+        client.fetch(
+            "http://localhost:5555/%ssubfolder/" % _base_path,
+            self.stop
+        )
+        response = self.wait()
+        self.assertEqual(200, response.code)
+        html = html5lib.parse(response.body)
+        ns = get_html_namespace(html)
+        self.assertEqual(
+            "Level 1 Test",
+            html_findall(html, ns, "./{ns}head/{ns}title")[0].text.strip()
+        )
+
+        # test fetching from the sub-path without a trailing slash
+        client.fetch(
+            "http://localhost:5555/%ssubfolder" % _base_path,
+            self.stop
+        )
+        response = self.wait()
+        self.assertEqual(200, response.code)
+
+        # test a file from the sub-sub-path
+        client.fetch(
+            "http://localhost:5555/%ssubfolder/subsubfolder/" % _base_path,
+            self.stop
+        )
+        response = self.wait()
+        self.assertEqual(200, response.code)
+        html = html5lib.parse(response.body)
+        ns = get_html_namespace(html)
+        self.assertEqual(
+            "Level 2 Test",
+            html_findall(html, ns, "./{ns}head/{ns}title")[0].text.strip()
+        )
+
+        # test fetching from the sub-sub-path without a trailing slash
+        client.fetch(
+            "http://localhost:5555/%ssubfolder/subsubfolder" % _base_path,
+            self.stop
+        )
+        response = self.wait()
+        self.assertEqual(200, response.code)
 
         # fetch the httpwatcher.min.js file
         client.fetch("http://localhost:5555/httpwatcher.min.js", self.stop)
