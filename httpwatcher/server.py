@@ -89,10 +89,8 @@ class HttpWatcherServer(tornado.web.Application):
             }),
             (r"%s(.*)" % self.server_base_path, HttpWatcherStaticFileHandler, {
                 "path": self.static_root,
-                "httpwatcher_script_url": "http://%s:%d/httpwatcher.min.js" % (
-                    self.host, self.port
-                ),
-                "websocket_url": "ws://%s:%d/httpwatcher" % (self.host, self.port),
+                "httpwatcher_script_url": "/httpwatcher.min.js",
+                "websocket_url": "/httpwatcher",
                 "server_base_path": self.server_base_path
             })
         ]
@@ -165,7 +163,7 @@ class HttpWatcherStaticFileHandler(tornado.web.RequestHandler):
     WebSocket JavaScript injection ability."""
 
     WEBSOCKET_JS_TEMPLATE = '<script type="application/javascript" src="{httpwatcher_script_url}"></script>\n' \
-                            '<script type="application/javascript">httpwatcher("{websocket_url}");</script>\n' \
+                            '<script type="application/javascript">httpwatcher("ws://" + location.host + "{websocket_url}");</script>\n' \
                             '</body>'
 
     static_path = None
