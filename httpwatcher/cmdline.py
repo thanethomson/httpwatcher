@@ -101,6 +101,11 @@ def main():
         default=False,
         help="Enable verbose debug logging"
     )
+    parser.add_argument(
+        '-i', '--interval',
+        default=1.0,
+        help="The maximum refresh rate of the server (default: 1.0)"
+    )
     args = parser.parse_args()
 
     if args.version:
@@ -121,5 +126,6 @@ def main():
             host=args.host,
             port=args.port,
             server_base_path=args.base_path,
-            open_browser=(not args.no_browser)
+            open_browser=(not args.no_browser),
+            watcher_interval=args.interval
         )
