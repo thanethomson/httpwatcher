@@ -127,5 +127,5 @@ def main():
             port=args.port,
             server_base_path=args.base_path,
             open_browser=(not args.no_browser),
-            watcher_interval=args.interval
+            watcher_interval=float(args.interval)
         )
